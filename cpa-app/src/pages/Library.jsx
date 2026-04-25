@@ -1,6 +1,3 @@
-以下を全部貼り付けてください。
-
-```jsx
 import { useState, useRef } from 'react'
 import { SUBJECTS, SUB, uid, todayStr } from '../constants'
 import { Card, SubjectBadge, ResultBadge, SectionTitle, Btn, FilterPill, EmptyState, C, SubjectSelector, Input } from '../components/ui'
@@ -415,6 +412,3 @@ function LawTracker({ data, update }) {
     </div>
   )
 }
-```
-
-貼り付けたらCommit changesを押してください。Vercelが自動で再デプロイします！
