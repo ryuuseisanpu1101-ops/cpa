@@ -13,19 +13,18 @@ export const REVIEW_INTERVALS = [1, 3, 7, 14, 30, 60, 90]
 export const IMPORTANCE = ['A', 'B', 'C']
 
 export const ANSWER = {
-  correct:  { label: '○', color: '#4ade80', bg: '#14532d22' },
-  partial:  { label: '△', color: '#fbbf24', bg: '#78350f22' },
-  wrong:    { label: '✕', color: '#f87171', bg: '#7f1d1d22' },
+  correct: { label: '○', color: '#4ade80', bg: '#14532d22' },
+  wrong:   { label: '✕', color: '#f87171', bg: '#7f1d1d22' },
 }
 
 export const PRACTICE_MODES = [
-  { key: 'all',        label: '通常演習',   icon: '▶', desc: 'フィルタして順番に解く' },
-  { key: 'random',     label: 'ランダム',    icon: '⟳', desc: '科目・重要度を指定してシャッフル' },
-  { key: 'weak',       label: '苦手集中',    icon: '✕', desc: '✕または△が1回でもある問題' },
-  { key: 'curve',      label: '忘却曲線',    icon: '↻', desc: '復習タイミングが来た問題' },
-  { key: 'drill',      label: '弱点ドリル',  icon: '⚡', desc: '直近で間違えた問題を集約' },
-  { key: 'exam',       label: '答練復習',    icon: '📝', desc: '答練・模試で間違えた問題' },
-  { key: 'diff',       label: '差別化問題',  icon: '🎯', desc: '全体正答率高いのに自分が✕' },
+  { key: 'all',    label: '通常演習',  icon: '▶', desc: 'フィルタして順番に解く' },
+  { key: 'random', label: 'ランダム',  icon: '⟳', desc: '科目・重要度を指定してシャッフル' },
+  { key: 'weak',   label: '苦手集中',  icon: '✕', desc: '✕が1回でもある問題' },
+  { key: 'curve',  label: '忘却曲線',  icon: '↻', desc: '復習タイミングが来た問題' },
+  { key: 'drill',  label: '弱点ドリル',icon: '⚡', desc: '直近で間違えた問題を集約' },
+  { key: 'exam',   label: '答練復習',  icon: '📝', desc: '答練・模試で間違えた問題' },
+  { key: 'diff',   label: '差別化問題',icon: '🎯', desc: '全体正答率高いのに自分が✕' },
 ]
 
 export const fmt2 = n => String(n).padStart(2, '0')
@@ -39,11 +38,5 @@ export const addDays = (ds, n) => {
   return `${d.getFullYear()}-${fmt2(d.getMonth()+1)}-${fmt2(d.getDate())}`
 }
 export const diffDays = (a, b) => Math.floor((new Date(b) - new Date(a)) / 86400000)
-
-// 分を時間・分に変換
-export const minsToHM = mins => ({
-  h: Math.floor(mins / 60),
-  m: mins % 60,
-})
-// 時間・分を分に変換
+export const minsToHM = mins => ({ h: Math.floor(mins / 60), m: mins % 60 })
 export const hmToMins = (h, m) => (parseInt(h) || 0) * 60 + (parseInt(m) || 0)
