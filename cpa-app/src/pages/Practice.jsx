@@ -1,18 +1,17 @@
 import { useState, useCallback } from 'react'
-import { SUBJECTS, SUB, PRACTICE_MODES, ANSWER, todayStr, uid } from '../constants'
-import { getQuestionsForMode, getDueReviews, recordAttempt, getAttempts, lastAttempt } from '../store/data'
-import { Card, SubjectBadge, ResultBadge, AnswerButtons, ProgressBar, FilterPill, RateBadge, SectionTitle, Btn, EmptyState, C } from '../components/ui'
+import { SUBJECTS, SUB, PRACTICE_MODES, todayStr } from '../constants'
+import { getQuestionsForMode, getDueReviews, recordAttempt, getAttempts } from '../store/data'
+import { Card, SubjectBadge, ProgressBar, FilterPill, RateBadge, SectionTitle, Btn, EmptyState, C } from '../components/ui'
 
 export default function Practice({ data, update }) {
-  const [screen, setScreen] = useState('menu') // menu | session | result
-  const [mode,   setMode]   = useState(null)
+  const [screen,  setScreen]  = useState('menu')
+  const [mode,    setMode]    = useState(null)
   const [filters, setFilters] = useState({ subject: '', importance: '' })
-  const [queue,   setQueue]  = useState([])
-  const [cursor,  setCursor] = useState(0)
-  const [sessionLog, setSessionLog] = useState([]) // [{questionId, result}]
-  const [showBody, setShowBody] = useState(false)
-  const [memo, setMemo]   = useState('')
-  const [rationale, setRationale] = useState('')
+  const [queue,   setQueue]   = useState([])
+  const [cursor,  setCursor]  = useState(0)
+  const [phase,   setPhase]   = useState('question') // question | answer
+  const [sessionLog, setSessionLog] = useState([])
+  const [memo,    setMemo]    = useState('')
 
   const startSession = (m) => {
     const qs = getQuestionsForMode(data, m, {
@@ -20,45 +19,51 @@ export default function Practice({ data, update }) {
       importance: filters.importance || undefined,
     })
     if (qs.length === 0) { alert('該当する問題がありません'); return }
-    setMode(m)
-    setQueue(qs)
-    setCursor(0)
-    setSessionLog([])
-    setShowBody(false)
-    setMemo('')
-    setRationale('')
+    setMode(m); setQueue(qs); setCursor(0)
+    setPhase('question'); setSessionLog([]); setMemo('')
     setScreen('session')
   }
 
-  const handleAnswer = useCallback((result) => {
+  const handleAnswer = useCallback((userAnswer) => {
+    // userAnswer: 'correct' or 'wrong' (ユーザーが○✕を選択)
     const q = queue[cursor]
-    const newData = recordAttempt(data, q.id, result, memo, rationale)
+    // 正解と一致するか
+    const isRight = userAnswer === q.answer
+    // 記録はユーザーの回答が正解かどうか
+    const result = isRight ? 'correct' : 'wrong'
+    const newData = recordAttempt(data, q.id, result, memo)
     update(() => newData)
-    setSessionLog(prev => [...prev, { questionId: q.id, result }])
+    setSessionLog(prev => [...prev, { questionId: q.id, result, userAnswer, correctAnswer: q.answer }])
+    setPhase('answer')
     setMemo('')
-    setRationale('')
-    setShowBody(false)
+  }, [queue, cursor, data, memo, update])
+
+  const next = () => {
     if (cursor + 1 >= queue.length) {
       setScreen('result')
     } else {
       setCursor(c => c + 1)
+      setPhase('question')
     }
-  }, [queue, cursor, data, memo, rationale, update])
+  }
 
   if (screen === 'result') {
-    return <ResultScreen log={sessionLog} queue={queue} onRetry={() => { setCursor(0); setSessionLog([]); setShowBody(false); setScreen('session') }} onBack={() => setScreen('menu')} />
+    return <ResultScreen log={sessionLog} queue={queue}
+      onRetry={() => { setCursor(0); setSessionLog([]); setPhase('question'); setScreen('session') }}
+      onBack={() => setScreen('menu')} />
   }
 
   if (screen === 'session' && queue.length > 0) {
-    const q   = queue[cursor]
-    const att = getAttempts(data, q.id)
-    const last = att.length ? att[att.length - 1] : null
-    const c   = SUB[q.subject]
-    const pct = (cursor + 1) / queue.length * 100
+    const q    = queue[cursor]
+    const atts = getAttempts(data, q.id)
+    const last = atts.length ? atts[atts.length - 1] : null
+    const c    = SUB[q.subject]
+    const pct  = (cursor + 1) / queue.length * 100
+    const isCorrect = phase === 'answer' && sessionLog[sessionLog.length - 1]?.result === 'correct'
 
     return (
       <div style={{ padding: '0 16px' }}>
-        {/* Progress */}
+        {/* ヘッダー */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
           <button onClick={() => setScreen('menu')} style={{ background: 'transparent', border: 'none', color: C.muted, cursor: 'pointer', fontSize: 20, padding: 0 }}>‹</button>
           <div style={{ flex: 1 }}>
@@ -68,82 +73,124 @@ export default function Practice({ data, update }) {
           <div style={{ fontSize: 11, color: C.muted }}>{PRACTICE_MODES.find(m => m.key === mode)?.label}</div>
         </div>
 
-        {/* Question card */}
-        <Card style={{ background: `linear-gradient(135deg, ${c.dim}, #111827)`, border: `1px solid ${c.accent}25`, marginBottom: 12 }}>
+        {/* 問題カード */}
+        <Card style={{
+          background: `linear-gradient(135deg, ${c.dim}, #111827)`,
+          border: `1px solid ${c.accent}25`,
+          marginBottom: 12,
+        }}>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 10 }}>
             <SubjectBadge subject={q.subject} />
             <span style={{ fontSize: 10, color: c.accent, fontWeight: 700 }}>{q.topicName}</span>
             {q.importance && (
               <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 20, background: 'rgba(255,255,255,0.08)', color: C.muted }}>重要度{q.importance}</span>
             )}
-            {q.chapter && (
-              <span style={{ fontSize: 10, color: C.muted }}>{q.chapter}</span>
-            )}
           </div>
 
-          <div style={{ fontSize: 20, fontWeight: 900, color: '#fff', marginBottom: 8 }}>
-            問{q.number}{q.limbIndex ? `-${q.limbIndex}` : ''}
-          </div>
+          {/* 問題文 */}
+          <div style={{
+            fontSize: 14, lineHeight: 1.9, color: '#e2e8f0',
+            whiteSpace: 'pre-wrap', marginBottom: 10,
+          }}>{q.body || '（問題文なし）'}</div>
 
-          {/* Body toggle */}
-          <button onClick={() => setShowBody(v => !v)} style={{
-            width: '100%', padding: '9px', borderRadius: 10,
-            border: `1px solid ${c.accent}25`, background: `${c.accent}0a`,
-            color: c.accent, fontFamily: 'inherit', fontSize: 12, fontWeight: 700, cursor: 'pointer',
-            marginBottom: showBody ? 10 : 0,
-          }}>{showBody ? '▲ 問題文を閉じる' : '▼ 問題文を見る'}</button>
-
-          {showBody && q.body && (
-            <div style={{
-              background: 'rgba(0,0,0,0.3)', borderRadius: 10, padding: 12,
-              fontSize: 13, lineHeight: 1.85, color: '#e2e8f0',
-              maxHeight: 240, overflowY: 'auto', whiteSpace: 'pre-wrap',
-            }}>{q.body}</div>
+          {/* 過去記録 */}
+          {atts.length > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingTop: 10, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+              <div style={{ fontSize: 10, color: C.muted }}>過去{atts.length}回</div>
+              <RateBadge rate={Math.round(atts.filter(a => a.result === 'correct').length / atts.length * 100)} />
+              <div style={{ display: 'flex', gap: 3 }}>
+                {atts.slice(-8).map((a, i) => (
+                  <div key={i} style={{ width: 8, height: 8, borderRadius: '50%', background: a.result === 'correct' ? '#4ade80' : '#f87171' }} />
+                ))}
+              </div>
+            </div>
           )}
         </Card>
 
-        {/* Past record */}
-        {att.length > 0 && (
-          <Card style={{ marginBottom: 12, padding: '10px 14px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{ fontSize: 10, color: C.muted }}>過去{att.length}回</div>
-              <RateBadge rate={Math.round(att.filter(a => a.result === 'correct').length / att.length * 100)} />
-              <div style={{ display: 'flex', gap: 3 }}>
-                {att.slice(-8).map((a, i) => {
-                  const col = a.result === 'correct' ? '#4ade80' : a.result === 'partial' ? '#fbbf24' : '#f87171'
-                  return <div key={i} style={{ width: 8, height: 8, borderRadius: '50%', background: col }} />
-                })}
-              </div>
-              {last?.rationale && (
-                <div style={{ fontSize: 10, color: C.muted, flex: 1, textAlign: 'right', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{last.rationale}</div>
-              )}
+        {/* 回答フェーズ */}
+        {phase === 'question' ? (
+          <div>
+            {/* メモ */}
+            <input value={memo} onChange={e => setMemo(e.target.value)}
+              placeholder="メモ（任意）"
+              style={{ width: '100%', padding: '9px 12px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: '#e2e8f0', fontSize: 12, outline: 'none', marginBottom: 12, boxSizing: 'border-box' }}
+            />
+
+            {/* ○✕ボタン */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <button onClick={() => handleAnswer('correct')} style={{
+                padding: '24px 0', borderRadius: 16,
+                border: '2px solid #22c55e40',
+                background: '#4ade8012',
+                color: '#4ade80', fontSize: 36, fontWeight: 900,
+                cursor: 'pointer', transition: 'all 0.15s',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+              }}>
+                ○
+                <span style={{ fontSize: 12, fontWeight: 600 }}>正しい</span>
+              </button>
+              <button onClick={() => handleAnswer('wrong')} style={{
+                padding: '24px 0', borderRadius: 16,
+                border: '2px solid #ef444440',
+                background: '#f8717112',
+                color: '#f87171', fontSize: 36, fontWeight: 900,
+                cursor: 'pointer', transition: 'all 0.15s',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+              }}>
+                ✕
+                <span style={{ fontSize: 12, fontWeight: 600 }}>誤り</span>
+              </button>
             </div>
-          </Card>
+
+            <button onClick={next} style={{ width: '100%', marginTop: 10, padding: '9px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.07)', background: 'transparent', color: C.muted, fontFamily: 'inherit', fontSize: 12, cursor: 'pointer' }}>
+              スキップ →
+            </button>
+          </div>
+        ) : (
+          /* 解答フェーズ */
+          <div>
+            {/* 正誤表示 */}
+            <div style={{
+              padding: '16px',
+              borderRadius: 14,
+              background: isCorrect ? '#14532d22' : '#7f1d1d22',
+              border: `1px solid ${isCorrect ? '#22c55e40' : '#ef444440'}`,
+              marginBottom: 12,
+              textAlign: 'center',
+            }}>
+              <div style={{ fontSize: 32, fontWeight: 900, color: isCorrect ? '#4ade80' : '#f87171', marginBottom: 4 }}>
+                {isCorrect ? '正解！' : '不正解'}
+              </div>
+              <div style={{ fontSize: 13, color: C.muted }}>
+                正解は <span style={{ fontWeight: 800, color: q.answer === 'correct' ? '#4ade80' : '#f87171', fontSize: 16 }}>
+                  {q.answer === 'correct' ? '○（正しい）' : '✕（誤り）'}
+                </span>
+              </div>
+            </div>
+
+            {/* 解説 */}
+            {q.explanation && (
+              <Card style={{ marginBottom: 12, background: 'rgba(255,255,255,0.03)' }}>
+                <div style={{ fontSize: 11, color: '#38bdf8', fontWeight: 700, marginBottom: 8 }}>解説</div>
+                <div style={{ fontSize: 13, lineHeight: 1.8, color: '#e2e8f0', whiteSpace: 'pre-wrap' }}>{q.explanation}</div>
+              </Card>
+            )}
+
+            {/* 次へ */}
+            <button onClick={next} style={{
+              width: '100%', padding: '14px', borderRadius: 12, border: 'none',
+              background: 'linear-gradient(135deg, #1d4ed8, #38bdf8)',
+              color: '#fff', fontFamily: 'inherit', fontSize: 14, fontWeight: 700, cursor: 'pointer',
+            }}>
+              {cursor + 1 >= queue.length ? '結果を見る' : '次の問題 →'}
+            </button>
+          </div>
         )}
-
-        {/* Memo / Rationale */}
-        <div style={{ marginBottom: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <input value={rationale} onChange={e => setRationale(e.target.value)}
-            placeholder="正誤の根拠（任意）"
-            style={{ padding: '9px 12px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: '#e2e8f0', fontSize: 12, outline: 'none' }}
-          />
-          <input value={memo} onChange={e => setMemo(e.target.value)}
-            placeholder="メモ（任意）"
-            style={{ padding: '9px 12px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: '#e2e8f0', fontSize: 12, outline: 'none' }}
-          />
-        </div>
-
-        {/* Answer buttons */}
-        <AnswerButtons onAnswer={handleAnswer} />
-
-        <button onClick={() => { setCursor(c => Math.min(c + 1, queue.length - 1)) }} style={{ width: '100%', marginTop: 10, padding: '9px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.07)', background: 'transparent', color: C.muted, fontFamily: 'inherit', fontSize: 12, cursor: 'pointer' }}>
-          スキップ →
-        </button>
       </div>
     )
   }
 
-  // ── Mode menu ──
+  // ── モードメニュー ──
   const dueCount = getDueReviews(data).length
   const allCount = data.questions.length
 
@@ -151,12 +198,12 @@ export default function Practice({ data, update }) {
     <div style={{ padding: '0 16px' }}>
       <SectionTitle sub={`問題数: ${allCount}問`}>演習</SectionTitle>
 
-      {/* Filters */}
+      {/* フィルター */}
       <Card style={{ marginBottom: 14, padding: '12px 14px' }}>
         <div style={{ fontSize: 11, color: C.muted, fontWeight: 700, marginBottom: 8 }}>フィルター</div>
         <div style={{ display: 'flex', gap: 5, overflowX: 'auto', scrollbarWidth: 'none', marginBottom: 6 }}>
           {['', ...SUBJECTS].map((s, i) => (
-            <FilterPill key={i} label={s || '全科目'} active={filters.subject === s}
+            <FilterPill key={i} label={s ? SUB[s].short : '全科目'} active={filters.subject === s}
               color={s ? SUB[s]?.accent : '#38bdf8'}
               onClick={() => setFilters(f => ({ ...f, subject: s }))} />
           ))}
@@ -169,7 +216,7 @@ export default function Practice({ data, update }) {
         </div>
       </Card>
 
-      {/* Mode cards */}
+      {/* モード一覧 */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {PRACTICE_MODES.map(m => {
           const count = getQuestionsForMode(data, m.key, {
@@ -178,13 +225,12 @@ export default function Practice({ data, update }) {
           }).length
           const isReview = m.key === 'curve'
           return (
-            <div key={m.key} onClick={() => startSession(m.key)} style={{
-              background: C.card, border: `1px solid ${C.border}`,
+            <div key={m.key} onClick={() => count > 0 && startSession(m.key)} style={{
+              background: '#111827', border: `1px solid rgba(255,255,255,0.06)`,
               borderRadius: 14, padding: '14px 16px',
               display: 'flex', alignItems: 'center', gap: 14,
               cursor: count > 0 ? 'pointer' : 'not-allowed',
               opacity: count > 0 ? 1 : 0.4,
-              transition: 'all 0.15s',
             }}>
               <div style={{
                 width: 40, height: 40, borderRadius: 12,
@@ -209,12 +255,10 @@ export default function Practice({ data, update }) {
   )
 }
 
-// ── Result screen ─────────────────────────────────────────────────────────
 function ResultScreen({ log, queue, onRetry, onBack }) {
   const correct = log.filter(l => l.result === 'correct').length
-  const partial = log.filter(l => l.result === 'partial').length
   const wrong   = log.filter(l => l.result === 'wrong').length
-  const rate    = Math.round(correct / log.length * 100)
+  const rate    = log.length ? Math.round(correct / log.length * 100) : 0
 
   return (
     <div style={{ padding: '0 16px' }}>
@@ -222,8 +266,8 @@ function ResultScreen({ log, queue, onRetry, onBack }) {
       <Card style={{ marginBottom: 14, textAlign: 'center', padding: '28px 20px' }}>
         <div style={{ fontSize: 52, fontWeight: 900, color: rate >= 80 ? '#4ade80' : rate >= 60 ? '#fbbf24' : '#f87171', lineHeight: 1 }}>{rate}%</div>
         <div style={{ fontSize: 13, color: C.muted, marginTop: 6 }}>{log.length}問中 {correct}問正解</div>
-        <div style={{ display: 'flex', justifyContent: 'center', gap: 20, marginTop: 16 }}>
-          {[['○', correct, '#4ade80'], ['△', partial, '#fbbf24'], ['✕', wrong, '#f87171']].map(([l, n, col]) => (
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 24, marginTop: 16 }}>
+          {[['○', correct, '#4ade80'], ['✕', wrong, '#f87171']].map(([l, n, col]) => (
             <div key={l} style={{ textAlign: 'center' }}>
               <div style={{ fontSize: 22, fontWeight: 900, color: col }}>{l}</div>
               <div style={{ fontSize: 18, fontWeight: 800, color: '#fff' }}>{n}</div>
@@ -231,6 +275,29 @@ function ResultScreen({ log, queue, onRetry, onBack }) {
           ))}
         </div>
       </Card>
+
+      {/* 間違えた問題一覧 */}
+      {log.filter(l => l.result === 'wrong').length > 0 && (
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: '#e2e8f0', marginBottom: 8 }}>間違えた問題</div>
+          {log.filter(l => l.result === 'wrong').map((l, i) => {
+            const q = queue.find(q => q.id === l.questionId)
+            if (!q) return null
+            return (
+              <Card key={i} style={{ marginBottom: 6, padding: '10px 14px' }}>
+                <div style={{ fontSize: 11, color: SUB[q.subject]?.accent, fontWeight: 700, marginBottom: 4 }}>{q.topicName}</div>
+                <div style={{ fontSize: 12, color: '#e2e8f0', lineHeight: 1.7, marginBottom: 6 }}>{q.body?.slice(0, 80)}…</div>
+                {q.explanation && (
+                  <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.6, borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 6 }}>
+                    {q.explanation.slice(0, 100)}…
+                  </div>
+                )}
+              </Card>
+            )
+          })}
+        </div>
+      )}
+
       <div style={{ display: 'flex', gap: 10 }}>
         <Btn onClick={onRetry} full color='#38bdf8'>✕問題だけもう一度</Btn>
         <Btn onClick={onBack}  full color='#6b7280'>一覧へ</Btn>
