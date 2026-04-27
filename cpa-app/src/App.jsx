@@ -1,6 +1,5 @@
 import { useState, useCallback } from 'react'
-import { load, save } from './store/data'
-import { getDueReviews } from './store/data'
+import { load, save, getDueReviews } from './store/data'
 import Home     from './pages/Home'
 import Practice from './pages/Practice'
 import Library  from './pages/Library'
@@ -40,11 +39,9 @@ export default function App() {
       flexDirection: 'column',
       position: 'relative',
     }}>
-      {/* iOS safe area top */}
       <div style={{ height: 44, flexShrink: 0 }} />
 
-      {/* Page content */}
-      <div style={{ flex: 1, overflowY: 'auto', paddingBottom: 82 }}>
+      <div style={{ flex: 1, overflowY: 'auto', paddingBottom: 100 }}>
         {tab === 'home'     && <Home     data={data} update={update} setTab={setTab} />}
         {tab === 'practice' && <Practice data={data} update={update} />}
         {tab === 'library'  && <Library  data={data} update={update} />}
@@ -53,7 +50,7 @@ export default function App() {
         {tab === 'ai'       && <AI       data={data} update={update} />}
       </div>
 
-      {/* Bottom tab bar */}
+      {/* タブバー */}
       <div style={{
         position: 'fixed',
         bottom: 0,
@@ -61,12 +58,13 @@ export default function App() {
         transform: 'translateX(-50%)',
         width: '100%',
         maxWidth: 430,
-        background: 'rgba(7,10,16,0.95)',
+        background: 'rgba(7,10,16,0.97)',
         backdropFilter: 'blur(24px)',
         WebkitBackdropFilter: 'blur(24px)',
         borderTop: '1px solid rgba(255,255,255,0.07)',
         display: 'flex',
-        paddingBottom: 'env(safe-area-inset-bottom, 16px)',
+        paddingBottom: 'env(safe-area-inset-bottom, 20px)',
+        paddingTop: 4,
         zIndex: 500,
       }}>
         {TABS.map(t => {
@@ -79,62 +77,58 @@ export default function App() {
               flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
-              padding: '10px 2px 4px',
+              padding: '10px 2px 8px',
               border: 'none',
               background: 'transparent',
               cursor: 'pointer',
               position: 'relative',
+              minHeight: 56,
             }}>
-              {/* Active indicator */}
               {active && (
                 <div style={{
                   position: 'absolute',
                   top: 0,
                   left: '50%',
                   transform: 'translateX(-50%)',
-                  width: 20,
-                  height: 2,
-                  borderRadius: '0 0 2px 2px',
+                  width: 24,
+                  height: 3,
+                  borderRadius: '0 0 3px 3px',
                   background: isAI ? '#38bdf8' : '#fff',
                 }} />
               )}
-
               <div style={{
-                fontSize: 20,
+                fontSize: 22,
                 lineHeight: 1,
-                marginBottom: 3,
+                marginBottom: 4,
                 color: active
                   ? (isAI ? '#38bdf8' : '#fff')
-                  : 'rgba(255,255,255,0.2)',
+                  : 'rgba(255,255,255,0.25)',
                 transition: 'color 0.2s',
               }}>{t.icon}</div>
-
               <div style={{
-                fontSize: 9,
+                fontSize: 10,
                 fontWeight: active ? 700 : 400,
                 color: active
-                  ? (isAI ? '#38bdf8' : 'rgba(255,255,255,0.7)')
-                  : 'rgba(255,255,255,0.2)',
+                  ? (isAI ? '#38bdf8' : 'rgba(255,255,255,0.8)')
+                  : 'rgba(255,255,255,0.25)',
                 transition: 'color 0.2s',
               }}>{t.label}</div>
-
-              {/* Badge */}
               {t.badge > 0 && (
                 <div style={{
                   position: 'absolute',
-                  top: 6,
-                  right: 'calc(50% - 16px)',
+                  top: 8,
+                  right: 'calc(50% - 18px)',
                   background: '#ef4444',
                   color: '#fff',
                   borderRadius: 10,
-                  minWidth: 14,
-                  height: 14,
-                  fontSize: 8,
+                  minWidth: 16,
+                  height: 16,
+                  fontSize: 9,
                   fontWeight: 800,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  padding: '0 3px',
+                  padding: '0 4px',
                 }}>{t.badge}</div>
               )}
             </button>
