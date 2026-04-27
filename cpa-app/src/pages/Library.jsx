@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { SUBJECTS, SUB, uid, todayStr } from '../constants'
-import { Card, SubjectBadge, ResultBadge, SectionTitle, Btn, FilterPill, EmptyState, C, SubjectSelector } from '../components/ui'
+import { Card, SubjectBadge, ResultBadge, RateBadge, SectionTitle, Btn, FilterPill, EmptyState, C, SubjectSelector } from '../components/ui'
 import { lastAttempt, getAttempts, deleteQuestion, updateQuestion, deleteFlashcard, updateFlashcard, deleteArticle, updateArticle } from '../store/data'
 
 export default function Library({ data, update }) {
