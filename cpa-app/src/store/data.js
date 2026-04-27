@@ -38,9 +38,9 @@ export function lastAttempt(data, questionId) {
   return arr.length ? arr[arr.length - 1] : null
 }
 
-export function recordAttempt(data, questionId, result, memo = '', rationale = '') {
+export function recordAttempt(data, questionId, result, memo = '') {
   const today  = todayStr()
-  const newAtt = { id: uid(), questionId, date: today, result, memo, rationale }
+  const newAtt = { id: uid(), questionId, date: today, result, memo }
   const q      = data.questions.find(q => q.id === questionId)
   let reviews  = [...data.reviews]
 
@@ -89,7 +89,7 @@ export function getQuestionsForMode(data, mode, filters = {}) {
 
   switch (mode) {
     case 'random': return shuffle(qs)
-    case 'weak':   return qs.filter(q => getAttempts(data, q.id).some(a => a.result === 'wrong' || a.result === 'partial'))
+    case 'weak':   return qs.filter(q => getAttempts(data, q.id).some(a => a.result === 'wrong'))
     case 'curve': {
       const due = getDueReviews(data)
       const dueTopics = new Set(due.map(r => `${r.subject}__${r.topicName}`))
@@ -97,7 +97,7 @@ export function getQuestionsForMode(data, mode, filters = {}) {
     }
     case 'drill':  return qs.filter(q => getAttempts(data, q.id).slice(-3).some(a => a.result === 'wrong'))
     case 'exam': {
-      const wrongIds = new Set((data.examQuestions || []).filter(eq => eq.myResult === 'wrong' || eq.myResult === 'partial').map(eq => eq.questionId).filter(Boolean))
+      const wrongIds = new Set((data.examQuestions || []).filter(eq => eq.myResult === 'wrong').map(eq => eq.questionId).filter(Boolean))
       return qs.filter(q => wrongIds.has(q.id))
     }
     case 'diff': {
@@ -143,12 +143,12 @@ export function topicStats(data, subject) {
   })
 }
 
-// ── 編集系ヘルパー ────────────────────────────────────────────────────────
+// ── 編集・削除ヘルパー ─────────────────────────────────────────────────────
 
+// 問題
 export function updateQuestion(data, id, fields) {
   return { ...data, questions: data.questions.map(q => q.id === id ? { ...q, ...fields } : q) }
 }
-
 export function deleteQuestion(data, id) {
   return {
     ...data,
@@ -157,22 +157,38 @@ export function deleteQuestion(data, id) {
   }
 }
 
+// 学習記録
 export function updateSession(data, id, fields) {
   return { ...data, sessions: data.sessions.map(s => s.id === id ? { ...s, ...fields } : s) }
 }
-
 export function deleteSession(data, id) {
   return { ...data, sessions: data.sessions.filter(s => s.id !== id) }
 }
 
+// 答練・模試
 export function updateExam(data, id, fields) {
   return { ...data, exams: (data.exams || []).map(e => e.id === id ? { ...e, ...fields } : e) }
 }
-
 export function deleteExam(data, id) {
   return {
     ...data,
     exams:         (data.exams || []).filter(e => e.id !== id),
     examQuestions: (data.examQuestions || []).filter(eq => eq.examId !== id),
   }
+}
+
+// フラッシュカード
+export function updateFlashcard(data, id, fields) {
+  return { ...data, flashcards: (data.flashcards || []).map(f => f.id === id ? { ...f, ...fields } : f) }
+}
+export function deleteFlashcard(data, id) {
+  return { ...data, flashcards: (data.flashcards || []).filter(f => f.id !== id) }
+}
+
+// 条文
+export function updateArticle(data, id, fields) {
+  return { ...data, articles: (data.articles || []).map(a => a.id === id ? { ...a, ...fields } : a) }
+}
+export function deleteArticle(data, id) {
+  return { ...data, articles: (data.articles || []).filter(a => a.id !== id) }
 }
