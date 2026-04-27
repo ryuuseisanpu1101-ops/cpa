@@ -3,18 +3,10 @@ import { SUBJECTS, SUB, todayStr, uid } from '../constants'
 import { subjectStats, getDueReviews } from '../store/data'
 import { Card, SectionTitle, Btn, FilterPill, C } from '../components/ui'
 
-const API_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY
-const HEADERS = {
-  'Content-Type': 'application/json',
-  'x-api-key': API_KEY,
-  'anthropic-version': '2023-06-01',
-  'anthropic-dangerous-direct-browser-access': 'true',
-}
-
 const callClaude = async (model, system, messages, max_tokens = 1000) => {
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
+  const res = await fetch('/api/claude', {
     method: 'POST',
-    headers: HEADERS,
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ model, max_tokens, system, messages }),
   })
   const d = await res.json()
